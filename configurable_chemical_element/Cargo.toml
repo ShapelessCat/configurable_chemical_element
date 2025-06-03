@@ -1,0 +1,31 @@
+[package]
+name = "configurable_chemical_element"
+version.workspace = true
+edition.workspace = true
+description = "A library for generating chemical elements with selected properties."
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+keywords = ["chemical", "element", "properties", "configurable", "rust", "python", "PyO3"]
+categories = ["Science", "Chemistry", "Library"]
+
+[lib]
+name = "configurable_chemical_element"
+crate-type = ["lib", "cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+macro_util = {path = "../macro_util"}
+serde = {version = "1.0", features = ["derive"]}
+serde_json = {version = "1.0"}
+pyo3 = { version = "0.25", features = ["abi3-py39", "chrono", "multiple-pymethods"] }
+
+[features]
+default = ["minimal"]
+minimal = []
+calypso = ["atomic_mass", "period_and_group", "van_der_Waals_radius"]
+atomic_mass = []
+period_and_group = []
+covalent_radius = []
+van_der_Waals_radius = []
+metallic_radius = []

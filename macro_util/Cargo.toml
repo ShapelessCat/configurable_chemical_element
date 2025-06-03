@@ -1,0 +1,20 @@
+[package]
+name = "macro_util"
+version.workspace = true
+edition.workspace = true
+description = "A project internal-use library for creating the enums of chemical elements symbols and names."
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+keywords = ["internal", "chemical", "element"]
+categories = ["Science", "Chemistry", "Library"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+serde = {version = "1.0", features = ["derive"]}
+serde_json = {version = "1.0"}
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["visit"] }
