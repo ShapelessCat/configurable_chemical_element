@@ -1,0 +1,23 @@
+{
+  "H": {
+    "name": "Hydrogen",
+    "atomic number": 1,
+    "covalent_radii": 0.31,
+    "vdw_radius": 1.20,
+    "metallic_radius": 0.20
+  },
+  "He": {
+    "name": "Helium",
+    "atomic number": 2,
+    "covalent_radii": 0.28,
+    "vdw_radius": 1.40,
+    "metallic_radius": 0.20
+  },
+  "Li": {
+    "name": "Lithium",
+    "atomic number": 3,
+    "covalent_radii": 1.28,
+    "vdw_radius": 1.82,
+    "metallic_radius": 1.52
+  }
+}
