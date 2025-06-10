@@ -1,4 +1,4 @@
-use crate::types::{ChemicalElement, ElementField};
+use crate::internal_types::{ChemicalElement, ElementField};
 use proc_macro::TokenStream;
 use quote::{ToTokens, quote};
 use syn::Ident;
@@ -40,7 +40,7 @@ pub fn build_all_elements_const(
     });
     quote! {
         const #all_elements_const_name: [ChemicalElement; #number_of_elements] = [
-            #(#elements),*
+            #(#elements,)*
         ];
     }
 }
@@ -62,11 +62,18 @@ pub fn build_enum(
     let companion_enum_name = element_field_type.companion().type_name();
     let field_name = element_field_type.field_name();
     let companion_field_name = element_field_type.companion().field_name();
+
+    let try_from_branches = elements.iter().map(|e| {
+        let v = &e[element_field_type];
+        let v_variant = Ident::new(v, proc_macro2::Span::call_site());
+        quote! { #v => Ok(Self :: #v_variant) }
+    });
+
     quote! {
         #[_pyo3::prelude::pyclass]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, _serde::Serialize, _serde::Deserialize)]
         pub enum #enum_name {
-            #(#variants),*
+            #(#variants,)*
         }
 
         impl std::fmt::Display for #enum_name {
@@ -94,24 +101,167 @@ pub fn build_enum(
                 }
             }
         }
+
+        impl<'a> TryFrom<&'a str> for #enum_name {
+            type Error = String;
+
+            fn try_from(value: &'a str) -> Result<Self, String> {
+                match value {
+                    #(#try_from_branches,)*
+                    _ => Err(format!("Can't build a {} value from {}", stringify!(#enum_name), value)),
+                }
+            }
+        }
+
+        impl TryFrom<String> for #enum_name {
+            type Error = String;
+
+            fn try_from(value: String) -> Result<Self, String> {
+                value.as_str().try_into()
+            }
+        }
+
         #[_pyo3::prelude::pymethods]
         impl #enum_name {
-            #[staticmethod]
-            fn from_atomic_number(atomic_number: u8) -> _pyo3::prelude::PyResult<Self> {
+            #[new]
+            fn new(value: String) -> _pyo3::prelude::PyResult<Self> {
+                match value.as_str().try_into() {
+                    Ok(v) => _pyo3::prelude::PyResult::Ok(v),
+                    Err(e) => _pyo3::prelude::PyResult::Err(
+                        pyo3::exceptions::PyValueError::new_err(
+                            format!("Failed to build a {} value from \"{}\"", stringify!(#enum_name), value)
+                        )
+                    ),
+                }
+            }
+
+            #[classmethod]
+            fn from_atomic_number(
+                cls: &_pyo3::prelude::Bound<'_, _pyo3::types::PyType>,
+                atomic_number: u8
+            ) -> _pyo3::prelude::PyResult<Self> {
+                match atomic_number.try_into() {
+                    Ok(ele) => _pyo3::prelude::PyResult::Ok(ele),
+                    Err(e) => _pyo3::prelude::PyResult::Err(pyo3::exceptions::PyValueError::new_err(e)),
+                }
+            }
+
+            #[classmethod]
+            fn from_symbol(
+                cls: &_pyo3::prelude::Bound<'_, _pyo3::types::PyType>,
+                symbol: ChemicalElementSymbol
+            ) -> _pyo3::prelude::PyResult<Self> {
+                _pyo3::prelude::PyResult::Ok(symbol.into())
+            }
+
+            #[classmethod]
+            fn from_name(
+                cls: &_pyo3::prelude::Bound<'_, _pyo3::types::PyType>,
+                name: ChemicalElementName
+            ) -> _pyo3::prelude::PyResult<Self> {
+                _pyo3::prelude::PyResult::Ok(name.into())
+            }
+        }
+    }
+}
+
+pub fn build_chemical_element(all_elements_const_name: &Ident) -> proc_macro2::TokenStream {
+    quote! {
+        #[_pyo3::prelude::pyclass(frozen)]
+        #[derive(Debug, Clone, Copy, PartialEq, _serde::Serialize, _serde::Deserialize)]
+        #[allow(non_snake_case)]
+        pub struct ChemicalElement {
+            #[pyo3(get)]
+            pub symbol: ChemicalElementSymbol,
+            #[pyo3(get)]
+            pub name: ChemicalElementName,
+            #[pyo3(get)]
+            pub atomic_number: u8,
+            #[cfg(feature = "atomic_mass")]
+            #[pyo3(get)]
+            pub atomic_mass: f32,
+            #[cfg(feature = "period_and_group")]
+            #[pyo3(get)]
+            pub period: u8,
+            #[cfg(feature = "period_and_group")]
+            #[pyo3(get)]
+            pub group: u8,
+            #[cfg(feature = "van_der_Waals_radius")]
+            #[pyo3(get)]
+            pub van_der_Waals_radius: Option<f32>,
+            #[cfg(feature = "covalent_radius")]
+            #[pyo3(get)]
+            pub covalent_radius: Option<f32>,
+            #[cfg(feature = "metallic_radius")]
+            #[pyo3(get)]
+            pub metallic_radius: Option<f32>,
+        }
+
+        #[_pyo3::prelude::pymethods]
+        impl ChemicalElement {
+            fn __repr__(&self) -> String {
+                format!("ChemicalElement.{}", self.symbol)
+            }
+
+            fn __str__(&self) -> String {
+                format!("{}", self.name)
+            }
+
+            #[classmethod]
+            fn from_atomic_number(
+                cls: &_pyo3::prelude::Bound<'_, _pyo3::types::PyType>,
+                atomic_number: u8
+            ) -> _pyo3::prelude::PyResult<Self> {
                 match atomic_number.try_into() {
                     Ok(element) => _pyo3::prelude::PyResult::Ok(element),
                     Err(err) => _pyo3::prelude::PyResult::Err(pyo3::exceptions::PyValueError::new_err(err)),
                 }
             }
 
-            #[staticmethod]
-            fn from_symbol(symbol: ChemicalElementSymbol) -> _pyo3::prelude::PyResult<Self> {
+            #[classmethod]
+            fn from_symbol(
+                cls: &_pyo3::prelude::Bound<'_, _pyo3::types::PyType>,
+                symbol: ChemicalElementSymbol
+            ) -> _pyo3::prelude::PyResult<Self> {
                 _pyo3::prelude::PyResult::Ok(symbol.into())
             }
 
-            #[staticmethod]
-            fn from_name(name: ChemicalElementName) -> _pyo3::prelude::PyResult<Self> {
+            #[classmethod]
+            fn from_name(
+                cls: &_pyo3::prelude::Bound<'_, _pyo3::types::PyType>,
+                name: ChemicalElementName
+            ) -> _pyo3::prelude::PyResult<Self> {
                 _pyo3::prelude::PyResult::Ok(name.into())
+            }
+        }
+
+        impl TryFrom<u8> for ChemicalElement {
+            type Error = String;
+
+            fn try_from(atomic_number_candidate: u8) -> Result<Self, Self::Error> {
+                if atomic_number_candidate == 0 || atomic_number_candidate > 118 {
+                    Err(format!("Invalid atomic number: {}", atomic_number_candidate))
+                } else {
+                    let atomic_number = atomic_number_candidate;
+                    let index = (atomic_number - 1) as usize;
+                    Ok(#all_elements_const_name[index])
+                }
+            }
+        }
+
+        impl From<ChemicalElementSymbol> for ChemicalElement {
+            fn from(symbol: ChemicalElementSymbol) -> Self {
+                let atomic_number: _std::num::NonZeroU8 = unsafe { _std::mem::transmute(symbol) };
+                let index = (atomic_number.get() - 1) as usize;
+                #all_elements_const_name[index]
+            }
+        }
+
+        impl From<ChemicalElementName> for ChemicalElement {
+            fn from(name: ChemicalElementName) -> Self {
+                let atomic_number: _std::num::NonZeroU8 = unsafe { _std::mem::transmute(name) };
+                let index = (atomic_number.get() - 1) as usize;
+                #all_elements_const_name[index]
             }
         }
     }
