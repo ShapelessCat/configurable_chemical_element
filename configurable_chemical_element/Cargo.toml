@@ -21,9 +21,9 @@ serde_json = {version = "1.0"}
 pyo3 = { version = "0.25", features = ["abi3-py39", "chrono", "multiple-pymethods"] }
 
 [features]
-default = ["minimal"]
+default = ["calypso"]
 minimal = []
-calypso = ["atomic_mass", "period_and_group", "van_der_Waals_radius"]
+calypso = ["atomic_mass", "period_and_group", "van_der_Waals_radius", "covalent_radius"]
 atomic_mass = []
 period_and_group = []
 covalent_radius = []
