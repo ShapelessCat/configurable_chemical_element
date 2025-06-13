@@ -3,6 +3,69 @@ use proc_macro::TokenStream;
 use quote::{ToTokens, quote};
 use syn::Ident;
 
+pub fn build_conditional_consts(all_elements: &[ChemicalElement]) -> proc_macro2::TokenStream {
+    let number_of_elements = all_elements.len();
+
+    let all_atomic_mass_name = Ident::new("ALL_ATOMIC_MASS", proc_macro2::Span::call_site());
+    let all_atomic_mass = all_elements.iter().map(|e| e.atomic_mass);
+
+    let all_periods_name = Ident::new("ALL_PERIODS", proc_macro2::Span::call_site());
+    let all_periods = all_elements.iter().map(|e| e.period);
+
+    let all_groups_name = Ident::new("ALL_GROUPS", proc_macro2::Span::call_site());
+    let all_groups = all_elements.iter().map(|e| e.group);
+
+    let all_van_der_waals_radii_name = Ident::new("ALL_VAN_DER_WAALS_RADII", proc_macro2::Span::call_site());
+    let all_van_der_waals_radii = all_elements.iter().map(|e|
+        match e.van_der_Waals_radius {
+            Some(r) => quote! { Some(#r) },
+            None => quote! { None }
+        }
+    );
+
+    let all_covalent_radii_name = Ident::new("ALL_COVALENT_RADII", proc_macro2::Span::call_site());
+    let all_covalent_radii = all_elements.iter().map(|e|
+        match e.covalent_radius {
+            Some(r) => quote! { Some(#r) },
+            None => quote! { None }
+        }
+    );
+
+    let all_metallic_radii_name = Ident::new("ALL_METALLIC_RADII", proc_macro2::Span::call_site());
+    let all_metallic_radii = all_elements.iter().map(|e|
+        match e.metallic_radius {
+            Some(r) => quote! { Some(#r) },
+            None => quote! { None }
+        }
+    );
+    quote! {
+        #[cfg(feature = "atomic_mass")]
+        const #all_atomic_mass_name: [f32; #number_of_elements] = [
+            #(#all_atomic_mass,)*
+        ];
+        #[cfg(feature = "period_and_group")]
+        const #all_periods_name: [u8; #number_of_elements] = [
+            #(#all_periods,)*
+        ];
+        #[cfg(feature = "period_and_group")]
+        const #all_groups_name: [u8; #number_of_elements] = [
+            #(#all_groups,)*
+        ];
+        #[cfg(feature = "van_der_Waals_radius")]
+        const #all_van_der_waals_radii_name: [Option<f32>; #number_of_elements] = [
+            #(#all_van_der_waals_radii,)*
+        ];
+        #[cfg(feature = "covalent_radius")]
+        const #all_covalent_radii_name: [Option<f32>; #number_of_elements] = [
+            #(#all_covalent_radii,)*
+        ];
+        #[cfg(feature = "metallic_radius")]
+        const #all_metallic_radii_name: [Option<f32>; #number_of_elements] = [
+            #(#all_metallic_radii,)*
+        ];
+    }
+}
+
 pub fn build_all_elements_const(
     all_elements: &[ChemicalElement],
     all_elements_const_name: &Ident,
