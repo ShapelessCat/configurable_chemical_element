@@ -1,7 +1,10 @@
 mod helpers;
 mod internal_types;
 
-use crate::helpers::{build_all_elements_const, build_chemical_element, build_conditional_consts, build_enum, compile_error};
+use crate::helpers::{
+    build_all_elements_const, build_chemical_element, build_conditional_consts, build_enum,
+    compile_error,
+};
 use crate::internal_types::{ChemicalElement, ElementField};
 use proc_macro::TokenStream;
 use quote::quote;

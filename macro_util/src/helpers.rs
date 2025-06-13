@@ -15,54 +15,103 @@ pub fn build_conditional_consts(all_elements: &[ChemicalElement]) -> proc_macro2
     let all_groups_name = Ident::new("ALL_GROUPS", proc_macro2::Span::call_site());
     let all_groups = all_elements.iter().map(|e| e.group);
 
-    let all_van_der_waals_radii_name = Ident::new("ALL_VAN_DER_WAALS_RADII", proc_macro2::Span::call_site());
-    let all_van_der_waals_radii = all_elements.iter().map(|e|
-        match e.van_der_Waals_radius {
-            Some(r) => quote! { Some(#r) },
-            None => quote! { None }
-        }
-    );
+    let all_van_der_waals_radii_name =
+        Ident::new("ALL_VAN_DER_WAALS_RADII", proc_macro2::Span::call_site());
+    let all_van_der_waals_radii = all_elements.iter().map(|e| match e.van_der_Waals_radius {
+        Some(r) => quote! { Some(#r) },
+        None => quote! { None },
+    });
 
     let all_covalent_radii_name = Ident::new("ALL_COVALENT_RADII", proc_macro2::Span::call_site());
-    let all_covalent_radii = all_elements.iter().map(|e|
-        match e.covalent_radius {
-            Some(r) => quote! { Some(#r) },
-            None => quote! { None }
-        }
-    );
+    let all_covalent_radii = all_elements.iter().map(|e| match e.covalent_radius {
+        Some(r) => quote! { Some(#r) },
+        None => quote! { None },
+    });
 
     let all_metallic_radii_name = Ident::new("ALL_METALLIC_RADII", proc_macro2::Span::call_site());
-    let all_metallic_radii = all_elements.iter().map(|e|
-        match e.metallic_radius {
-            Some(r) => quote! { Some(#r) },
-            None => quote! { None }
-        }
-    );
+    let all_metallic_radii = all_elements.iter().map(|e| match e.metallic_radius {
+        Some(r) => quote! { Some(#r) },
+        None => quote! { None },
+    });
     quote! {
         #[cfg(feature = "atomic_mass")]
         const #all_atomic_mass_name: [f32; #number_of_elements] = [
             #(#all_atomic_mass,)*
         ];
+
+        #[cfg(feature = "atomic_mass")]
+        #[_pyo3::prelude::pyfunction]
+        pub fn atomic_mass_of(symbol: &ChemicalElementSymbol) -> f32 {
+            let atomic_number: std::num::NonZeroU8 = symbol.into();
+            let index = (atomic_number.get() - 1) as usize;
+            #all_atomic_mass_name[index]
+        }
+
         #[cfg(feature = "period_and_group")]
         const #all_periods_name: [u8; #number_of_elements] = [
             #(#all_periods,)*
         ];
+
+        #[cfg(feature = "period_and_group")]
+        #[_pyo3::prelude::pyfunction]
+        pub fn period_of(symbol: &ChemicalElementSymbol) -> u8 {
+            let atomic_number: std::num::NonZeroU8 = symbol.into();
+            let index = (atomic_number.get() - 1) as usize;
+            #all_periods_name[index]
+        }
+
         #[cfg(feature = "period_and_group")]
         const #all_groups_name: [u8; #number_of_elements] = [
             #(#all_groups,)*
+
         ];
+
+        #[cfg(feature = "period_and_group")]
+        #[_pyo3::prelude::pyfunction]
+        pub fn group_of(symbol: &ChemicalElementSymbol) -> u8 {
+            let atomic_number: std::num::NonZeroU8 = symbol.into();
+            let index = (atomic_number.get() - 1) as usize;
+            #all_periods_name[index]
+        }
+
         #[cfg(feature = "van_der_Waals_radius")]
         const #all_van_der_waals_radii_name: [Option<f32>; #number_of_elements] = [
             #(#all_van_der_waals_radii,)*
         ];
+
+        #[cfg(feature = "period_and_group")]
+        #[_pyo3::prelude::pyfunction]
+        pub fn van_der_waals_radius_of(symbol: &ChemicalElementSymbol) -> Option<f32> {
+            let atomic_number: std::num::NonZeroU8 = symbol.into();
+            let index = (atomic_number.get() - 1) as usize;
+            #all_van_der_waals_radii_name[index]
+        }
+
         #[cfg(feature = "covalent_radius")]
         const #all_covalent_radii_name: [Option<f32>; #number_of_elements] = [
             #(#all_covalent_radii,)*
         ];
+
+        #[cfg(feature = "covalent_radius")]
+        #[_pyo3::prelude::pyfunction]
+        pub fn covalent_radius_of(symbol: &ChemicalElementSymbol) -> Option<f32> {
+            let atomic_number: std::num::NonZeroU8 = symbol.into();
+            let index = (atomic_number.get() - 1) as usize;
+            #all_covalent_radii_name[index]
+        }
+
         #[cfg(feature = "metallic_radius")]
         const #all_metallic_radii_name: [Option<f32>; #number_of_elements] = [
             #(#all_metallic_radii,)*
         ];
+
+        #[cfg(feature = "metallic_radius")]
+        #[_pyo3::prelude::pyfunction]
+        pub fn metallic_radius_of(symbol: &ChemicalElementSymbol) -> Option<f32> {
+            let atomic_number: std::num::NonZeroU8 = symbol.into();
+            let index = (atomic_number.get() - 1) as usize;
+            #all_metallic_radii_name[index]
+        }
     }
 }
 
@@ -148,6 +197,18 @@ pub fn build_enum(
         impl From<#companion_enum_name> for #enum_name {
             fn from(#companion_field_name: #companion_enum_name) -> Self {
                 unsafe { std::mem::transmute(#companion_field_name) }
+            }
+        }
+
+        impl From<#enum_name> for std::num::NonZeroU8 {
+            fn from(field_name: #enum_name) -> Self {
+                unsafe { std::mem::transmute(field_name) }
+            }
+        }
+
+        impl<'a> From<&'a #enum_name> for std::num::NonZeroU8 {
+            fn from(field_name: &'a #enum_name) -> Self {
+                (*field_name).into()
             }
         }
 
